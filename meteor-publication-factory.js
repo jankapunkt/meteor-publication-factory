@@ -35,12 +35,19 @@ export const PublicationFactory = {
 		const limitDef = defObj.limit || 50;
 		const sleepDef = defObj.sleep || 2000;
 
+		const logger = defObj.logger;
+
 		return function (filter, limit, sort) {
-			if (rolesDef && rolesDef.length > 0)
-				PublicationFactory.checkRoles(this.userId, rolesDef.names, rolesDef.domain);
+
+			console.log("run publication " + defObj.name);
 
 			// first check access
 			PublicationFactory.checkUser(this.userId);
+
+			// check roles if present
+			if (rolesDef && rolesDef.length > 0)
+				PublicationFactory.checkRoles(this.userId, rolesDef.names, rolesDef.domain);
+
 			if (!filter) filter = {};
 			filter = Object.assign({}, filter, filterDef);
 			if (!limit || limit <= 0) limit = limitDef;
@@ -59,12 +66,21 @@ export const PublicationFactory = {
 			if (sort && Object.keys(sort).length > 0)
 				transform.sort = sort;
 
+			if (logger)
+				logger.call("Publication " + defObj.name + ": ask for documents:" , this.userId, filter, transform);
+
 			// queue the data
 			const data = collection.find(filter, transform);
 
 			// return if something has been found
-			if (data && data.count() > 0)
+			if (data && data.count() > 0){
+				if (logger)
+					logger.call("Publication " + defObj.name + ": return documents - " + data.count() + "docs to " + this.userId);
 				return data;
+			}
+
+			if (logger)
+				logger.call("Publication " + defObj.name + ": no data found");
 
 			// else signal the subscription
 			// that we are ready
