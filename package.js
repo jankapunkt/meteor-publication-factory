@@ -24,7 +24,7 @@ Package.onTest(function (api) {
 	api.use('alanning:roles@1.2.0');
 	api.use('random');
 	api.use('practicalmeteor:chai');
-	api.use('jkuester:meteor-mocha-helpers');
+	api.use('jkuester:meteor-mocha-helpers@0.1.1');
 	api.use('jkuester:meteor-publication-factory');
 	api.mainModule('meteor-publication-factory-tests.js');
 });
