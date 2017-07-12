@@ -19,7 +19,8 @@ if (Meteor.isServer) {
 	const factoryProps = MochaHelpers.getDefaultPropsWith({});
 	MochaHelpers.mockCollection(DummyCollection, factoryName, factoryProps);
 
-	Meteor.users = MochaHelpers.crateDummyCollection("users");
+	if (!Meteor.users)
+		 Meteor.users = MochaHelpers.crateDummyCollection("users");
 
 	describe("PublicationFactory - API", function () {
 
