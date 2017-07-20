@@ -39,7 +39,7 @@ export const PublicationFactory = {
 
 		return function (filter, limit, sort) {
 
-			console.log("run publication " + defObj.name);
+			//console.log("run publication " + defObj.name);
 
 			// first check access
 			PublicationFactory.checkUser(this.userId);
