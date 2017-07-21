@@ -14,9 +14,9 @@ before_install:
 
 install:
   - export CURRENT_PACKAGE=$(pwd)
-  - cd ../
-  - git clone https://github.com/jankapunkt/meteor-mocha-helpers.git
-  - cd $CURRENT_PACKAGE
+  - cd tests
+  - meteor npm install --save-dev phantomjs-prebuilt
+  - meteor npm install
 
 script:
-  - sh testscli.sh
+  - meteor npm run testcli
