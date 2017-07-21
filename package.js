@@ -1,10 +1,10 @@
 Package.describe({
 	name: 'jkuester:meteor-publication-factory',
-	version: '0.1.1',
+	version: '0.1.2',
 	// Brief, one-line summary of the package.
-	summary: '',
+	summary: 'Factory for publications with access check and parameterization.',
 	// URL to the Git repository containing the source code for this package.
-	git: '',
+	git: 'https://github.com/jankapunkt/meteor-publication-factory.git',
 	// By default, Meteor will default to using README.md for documentation.
 	// To avoid submitting documentation, set this field to null.
 	documentation: 'README.md'
