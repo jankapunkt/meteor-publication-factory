@@ -161,7 +161,7 @@ if (Meteor.isServer) {
 				roles: roles
 			});
 			assert.throws(function () {
-				pub(userId);
+				pub();
 			}, PublicationFactory.NO_PERMISSION);
 
 			// add user to roles
