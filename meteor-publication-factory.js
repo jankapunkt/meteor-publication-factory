@@ -1,5 +1,6 @@
 import {Meteor} from 'meteor/meteor';
 import {Roles} from 'meteor/alanning:roles';
+import {check, Match} from 'meteor/check';
 
 export const PublicationFactory = {
 
@@ -25,6 +26,24 @@ export const PublicationFactory = {
 		return true;
 	},
 
+
+	_defaultLimit: 25,
+
+	setDefaultLimit(value){
+		check(value, Number);
+		this._defaultLimit = value;
+		return this;
+	},
+
+
+	_defaultSleep: 2000,
+
+	setDefaultSleep(value) {
+		check(value, Number);
+		this._defaultSleep = value;
+		return this;
+	},
+
 	createPublication(defObj) {
 		const collection = defObj.collection;
 		this.checkCollection(collection);
@@ -32,14 +51,24 @@ export const PublicationFactory = {
 		const fieldsDef = defObj.fields || {};
 		const filterDef = defObj.filter || {};
 		const rolesDef = defObj.roles;
-		const limitDef = defObj.limit || 50;
-		const sleepDef = defObj.sleep || 2000;
+		const limitDef = defObj.limit || 0;
+		const sleepDef = defObj.sleep || this._defaultSleep;
+
+		const fieldsByRoleDef = defObj.fieldsByRole || null;
 
 		const logger = defObj.logger;
 
-		return function (filter, limit, sort) {
+		return function (selector={}, limit=-1, sort={}, skip=-1) {
 
-			//console.log("run publication " + defObj.name);
+			check(selector, Object);
+			check(limit, Number);
+			check(sort, Object);
+			check(skip, Number);
+
+			if (logger) {
+				logger.call(logger, "---------------------------------------------");
+				logger.call(logger, "Run publication ", selector, limit, sort, skip);
+			}
 
 			// first check access
 			PublicationFactory.checkUser(this.userId);
@@ -48,39 +77,61 @@ export const PublicationFactory = {
 			if (rolesDef && rolesDef.length > 0)
 				PublicationFactory.checkRoles(this.userId, rolesDef.names, rolesDef.domain);
 
-			if (!filter) filter = {};
-			filter = Object.assign({}, filter, filterDef);
-			if (!limit || limit <= 0) limit = limitDef;
+			// apply predefined filter
+			selector = Object.assign({}, selector, filterDef);
+
 
 			// if the current queue limit exceedes the default limit value
 			// then sleep for a given time
 			if (limit > limitDef)
 				Meteor._sleepForMs(sleepDef);
 
-			// create transform obj
-			const transform = {};
-			if (limitDef > 0)
-				transform.limit = limit;
+			// create options obj
+			const options = {};
+
+			// apply limit or skip
+			if (limit  > 0) {
+				options.limit = limit;
+				if (skip > 0) {
+					//options.skip = skip;
+					options.limit += skip;
+				}
+			}else{
+				options.limit = limitDef;
+			}
+
+			// apply which fields are visible
 			if (fieldsDef && Object.keys(fieldsDef).length > 0)
-				transform.fields = fieldsDef;
+				options.fields = fieldsDef;
+
+			// additionally apply fields by role
+			// and if user is in role
+			if (fieldsByRoleDef) {
+				// const rolesToMatch = Object.keys(fieldsByRoleDef);
+				// TODO check roles and assign fields if matched
+			}
+
+			// apply sort
 			if (sort && Object.keys(sort).length > 0)
-				transform.sort = sort;
+				options.sort = sort;
 
-			if (logger)
-				logger.call("Publication " + defObj.name + ": ask for documents:" , this.userId, filter, transform);
 
-			// queue the data
-			const data = collection.find(filter, transform);
+			if (logger) {
+				logger.call(logger, "Publication " + defObj.name + ": ask for " + [limit] + " documents:", this.userId, selector, options);
+			}
+
+			// query the data
+			const data = collection.find(selector, options);
 
 			// return if something has been found
-			if (data && data.count() > 0){
+			if (data && data.count() > 0) {
 				if (logger)
-					logger.call("Publication " + defObj.name + ": return documents - " + data.count() + "docs to " + this.userId);
+					logger.call(logger, "Publication " + defObj.name + ": return documents - " + data.count() + "docs to " + this.userId);
 				return data;
 			}
 
 			if (logger)
-				logger.call("Publication " + defObj.name + ": no data found");
+				logger.call(logger, "Publication " + defObj.name + ": no data found");
 
 			// else signal the subscription
 			// that we are ready
