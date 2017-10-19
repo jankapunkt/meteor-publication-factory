@@ -6,16 +6,18 @@ export const PublicationFactory = {
 
 	NO_PERMISSION: "No permission to collect data from this publication",
 	NO_COLLECTION: "No collection provided for this publication.",
+	NO_EMPTY_QUERY: "No empty queries are allowed",
+	NO_VALID_QUERY:"No valid query provided.",
 
 	checkUser(userId){
 		if (!userId || !Meteor.users.findOne(userId))
-			throw new Meteor.Error(this.NO_PERMISSION);
+			throw new Meteor.Error("403", this.NO_PERMISSION, userId);
 		return true;
 	},
 
 	checkCollection(collection){
 		if (!collection /* || ! collection instanceof Mongo.Collection */)
-			throw new Meteor.Error(this.NO_COLLECTION);
+			throw new Meteor.Error("500", this.NO_COLLECTION);
 		return true;
 	},
 
@@ -48,6 +50,10 @@ export const PublicationFactory = {
 		const collection = defObj.collection;
 		this.checkCollection(collection);
 
+		const preventEmpty = !!(defObj.preventEmptyQuery);
+
+		const querySchema = defObj.querySchema ? defObj.querySchema : null;
+
 		const fieldsDef = defObj.fields || {};
 		const filterDef = defObj.filter || {};
 		const rolesDef = defObj.roles;
@@ -58,7 +64,7 @@ export const PublicationFactory = {
 
 		const logger = defObj.logger;
 
-		return function (selector={}, limit=-1, sort={}, skip=-1) {
+		return function (selector = {}, limit = -1, sort = {}, skip = -1) {
 
 			check(selector, Object);
 			check(limit, Number);
@@ -77,6 +83,15 @@ export const PublicationFactory = {
 			if (rolesDef && rolesDef.length > 0)
 				PublicationFactory.checkRoles(this.userId, rolesDef.names, rolesDef.domain);
 
+			if (preventEmpty && Object.keys(selector).length === 0) {
+				throw new Meteor.Error("403", PublicationFactory.NO_EMPTY_QUERY);
+			}
+
+			if (querySchema) {
+				if (!Match.test(selector, querySchema))
+					throw new Meteor.Error("403", PublicationFactory.NO_VALID_QUERY+ " given: " + JSON.stringify(selector) + " but required  " + JSON.stringify(querySchema));
+			}
+
 			// apply predefined filter
 			selector = Object.assign({}, selector, filterDef);
 
@@ -90,13 +105,13 @@ export const PublicationFactory = {
 			const options = {};
 
 			// apply limit or skip
-			if (limit  > 0) {
+			if (limit > 0) {
 				options.limit = limit;
 				if (skip > 0) {
 					//options.skip = skip;
 					options.limit += skip;
 				}
-			}else{
+			} else {
 				options.limit = limitDef;
 			}
 
