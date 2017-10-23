@@ -1,5 +1,6 @@
 /* eslint-env mocha */
 import {Meteor} from 'meteor/meteor';
+import {Match} from 'meteor/check';
 import {Roles} from 'meteor/alanning:roles';
 import {PublicationFactory} from 'meteor/jkuester:meteor-publication-factory';
 import {MochaHelpers} from 'meteor/jkuester:meteor-mocha-helpers';
@@ -195,9 +196,42 @@ if (Meteor.isServer) {
 			MochaHelpers.collectPublication(userId, pubName, factoryName, 0, done);
 		});
 
-		// TODO test with documents
 
-		// TODO test with user level permissions etc.
+		it ("prevents empty queries if set", function () {
+			publish({
+				name: pubName,
+				collection: DummyCollection,
+				limit: 5000,
+				sleep: 5000,
+				preventEmptyQuery: true
+			});
+
+			assert.throws(function () {
+				MochaHelpers.collectPublication(userId, pubName, factoryName, 0, function (err) {
+					throw err;
+				});
+			},  PublicationFactory.NO_EMPTY_QUERY);
+		});
+
+		it ("allows to define query schema", function (done) {
+			publish({
+				name: pubName,
+				collection: DummyCollection,
+				limit: 5000,
+				sleep: 5000,
+				querySchema: {_id: Match.OneOf(String, Object)},
+			});
+
+			assert.throws(function () {
+				MochaHelpers.collectPublicationWithParams(userId, pubName, factoryName, {_id:123456}, 0, function (err) {
+					throw err;
+				});
+			},  PublicationFactory.NO_VALID_QUERY);
+
+			MochaHelpers.collectPublicationWithParams(userId, pubName, factoryName, {_id:{$in:[Random.id(), Random.id()]}}, 0, done);
+		});
+
+
 	});
 
 }
