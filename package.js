@@ -1,6 +1,6 @@
 Package.describe({
 	name: 'jkuester:meteor-publication-factory',
-	version: '0.1.4',
+	version: '0.1.5',
 	// Brief, one-line summary of the package.
 	summary: 'Factory for publications with access check and parameterization.',
 	// URL to the Git repository containing the source code for this package.
