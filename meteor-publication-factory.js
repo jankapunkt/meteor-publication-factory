@@ -139,7 +139,7 @@ export const PublicationFactory = {
 			const data = collection.find(selector, options);
 
 			// return if something has been found
-			if (data && data.count() > 0) {
+			if (data && data.count() >= 0) {
 				if (logger)
 					logger.call(logger, "Publication " + defObj.name + ": return documents - " + data.count() + "docs to " + this.userId);
 				return data;
