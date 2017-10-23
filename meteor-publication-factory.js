@@ -1,5 +1,5 @@
 import {Meteor} from 'meteor/meteor';
-import {Roles} from 'meteor/alanning:roles';
+//import {Roles} from 'meteor/alanning:roles';
 import {check, Match} from 'meteor/check';
 
 export const PublicationFactory = {
@@ -80,7 +80,7 @@ export const PublicationFactory = {
 			PublicationFactory.checkUser(this.userId);
 
 			// check roles if present
-			if (rolesDef && rolesDef.length > 0)
+			if (rolesDef)
 				PublicationFactory.checkRoles(this.userId, rolesDef.names, rolesDef.domain);
 
 			if (preventEmpty && Object.keys(selector).length === 0) {
