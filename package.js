@@ -1,6 +1,6 @@
 Package.describe({
 	name: 'jkuester:meteor-publication-factory',
-	version: '0.1.3',
+	version: '0.1.4',
 	// Brief, one-line summary of the package.
 	summary: 'Factory for publications with access check and parameterization.',
 	// URL to the Git repository containing the source code for this package.
@@ -16,7 +16,7 @@ Package.onUse(function (api) {
 	api.use('meteor');
 	api.use('check');
 	api.use('mongo@1.1.19')
-	api.use('alanning:roles@1.2.0');
+	api.use('alanning:roles@1.2.16');
 	api.mainModule('meteor-publication-factory.js');
 });
 
@@ -25,7 +25,7 @@ Package.onTest(function (api) {
 	api.use('meteor');
 	api.use('check');
 	api.use('mongo@1.1.19')
-	api.use('alanning:roles@1.2.0');
+	api.use('alanning:roles@1.2.16');
 	api.use('random');
 	api.use('practicalmeteor:chai');
 	api.use('hwillson:stub-collections');
