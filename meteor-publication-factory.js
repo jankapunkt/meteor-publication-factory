@@ -1,156 +1,132 @@
-import {Meteor} from 'meteor/meteor';
-//import {Roles} from 'meteor/alanning:roles';
-import {check, Match} from 'meteor/check';
+import { Meteor } from 'meteor/meteor';
+import { check, Match } from 'meteor/check';
+
+const isObject = x => typeof x === 'object';
 
 export const PublicationFactory = {
 
-	NO_PERMISSION: "No permission to collect data from this publication",
-	NO_COLLECTION: "No collection provided for this publication.",
-	NO_EMPTY_QUERY: "No empty queries are allowed",
-	NO_VALID_QUERY:"No valid query provided.",
+  errors: {
+    notInRole: 'publicationFactory.notInRole',
+    userDenied: 'publicationFactory.userDenied',
+    notMember: 'publicationFactory.notMember',
+    noCollection: 'publicationFactory.noCollection',
+    insufficientRolesDef: 'publicationFactory.insufficientRolesDef',
+    insufficientMembersDef: 'publicationFactory.insufficientMembersDef',
+    missingTransformValue: 'publicationFactory.missingTransformValue',
+  },
 
-	checkUser(userId){
-		if (!userId || !Meteor.users.findOne(userId))
-			throw new Meteor.Error("403", this.NO_PERMISSION, userId);
-		return true;
-	},
+  checkUser(userId) {
+    if (!userId || !Meteor.users.findOne(userId)) {
+      throw new Meteor.Error(this.errors.userDenied);
+    }
+    return true;
+  },
 
-	checkCollection(collection){
-		if (!collection /* || ! collection instanceof Mongo.Collection */)
-			throw new Meteor.Error("500", this.NO_COLLECTION);
-		return true;
-	},
+  checkCollection(collection) {
+    if (!collection || !(collection instanceof Mongo.Collection)) {
+      throw new Meteor.Error(this.errors.noCollection);
+    }
+    return true;
+  },
 
-	checkRoles(userId, roleNames, roleDomain) {
-		if (!userId || !roleNames || !roleDomain) throw new Meteor.Error(this.NO_PERMISSION);
-		const isInRoles = Roles.userIsInRole(userId, roleNames, roleDomain);
-		if (!isInRoles) throw new Meteor.Error(this.NO_PERMISSION);
-		return true;
-	},
+  checkRoles(userId, roleNames, roleDomain) {
+    const isInRoles = Roles.userIsInRole(userId, roleNames, roleDomain);
+    if (!isInRoles) {
+      throw new Meteor.Error(this.errors.notInRole);
+    }
+    return true;
+  },
 
+  checkIsMember(userId, userIds) {
+    if (!userId || !userIds) {
+      throw new Meteor.Error(this.errors.notMember);
+    }
+    const isMember = userIds.indexOf(userId) > -1;
+    if (!isMember) {
+      throw new Meteor.Error(this.errors.notMember);
+    }
+    return true;
+  },
 
-	_defaultLimit: 25,
+  _clientServerTransform: Match.Maybe({
+    schema: Match.Maybe(Match.Where(isObject)),
+    server: Match.Maybe(Match.Where(isObject)),
+    transform: Match.Maybe(Function),
+  }),
 
-	setDefaultLimit(value){
-		check(value, Number);
-		this._defaultLimit = value;
-		return this;
-	},
+  create({
+    collectionName, query, projection, security = {},
+  }) {
+    check(collectionName, String);
+    check(query, this._clientServerTransform);
+    check(projection, this._clientServerTransform);
+    check(security, {
+      roles: Match.Maybe(Match.OneOf(String, [String])),
+      group: Match.Maybe(String),
+      users: Match.Maybe([String]),
+      disable: Match.Maybe(Boolean),
+    });
 
+    const Collection = Mongo.Collection.get(collectionName);
+    this.checkCollection(Collection);
 
-	_defaultSleep: 2000,
+    const clientSchema = query.schema || {};
+    const queryServer = query.server || {};
+    const queryTransform = query.transform || (() => queryServer);
 
-	setDefaultSleep(value) {
-		check(value, Number);
-		this._defaultSleep = value;
-		return this;
-	},
-
-	createPublication(defObj) {
-		const collection = defObj.collection;
-		this.checkCollection(collection);
-
-		const preventEmpty = !!(defObj.preventEmptyQuery);
-
-		const querySchema = defObj.querySchema ? defObj.querySchema : null;
-
-		const fieldsDef = defObj.fields || {};
-		const filterDef = defObj.filter || {};
-		const rolesDef = defObj.roles;
-		const limitDef = defObj.limit || 0;
-		const sleepDef = defObj.sleep || this._defaultSleep;
-
-		const fieldsByRoleDef = defObj.fieldsByRole || null;
-
-		const logger = defObj.logger;
-
-		return function (selector = {}, limit = -1, sort = {}, skip = -1) {
-
-			check(selector, Object);
-			check(limit, Number);
-			check(sort, Object);
-			check(skip, Number);
-
-			if (logger) {
-				logger.call(logger, "---------------------------------------------");
-				logger.call(logger, "Run publication ", selector, limit, sort, skip);
-			}
-
-			// first check access
-			PublicationFactory.checkUser(this.userId);
-
-			// check roles if present
-			if (rolesDef)
-				PublicationFactory.checkRoles(this.userId, rolesDef.names, rolesDef.domain);
-
-			if (preventEmpty && Object.keys(selector).length === 0) {
-				throw new Meteor.Error("403", PublicationFactory.NO_EMPTY_QUERY);
-			}
-
-			if (querySchema) {
-				if (!Match.test(selector, querySchema))
-					throw new Meteor.Error("403", PublicationFactory.NO_VALID_QUERY+ " given: " + JSON.stringify(selector) + " but required  " + JSON.stringify(querySchema));
-			}
-
-			// apply predefined filter
-			selector = Object.assign({}, selector, filterDef);
+    const projectionSchema = projection.schema || {};
+    const projectionServer = projection.server || {};
+    const projectionTransform = projection.transform || (() => projectionServer);
 
 
-			// if the current queue limit exceedes the default limit value
-			// then sleep for a given time
-			if (limit > limitDef)
-				Meteor._sleepForMs(sleepDef);
+    const noUserChecks = !!security.disable;
 
-			// create options obj
-			const options = {};
+    const { roles } = security;
+    const { group } = security;
 
-			// apply limit or skip
-			if (limit > 0) {
-				options.limit = limit;
-				if (skip > 0) {
-					//options.skip = skip;
-					options.limit += skip;
-				}
-			} else {
-				options.limit = limitDef;
-			}
+    if (typeof roles !== 'undefined' && roles.length === 0) {
+      throw new Error(this.errors.insufficientRolesDef);
+    }
 
-			// apply which fields are visible
-			if (fieldsDef && Object.keys(fieldsDef).length > 0)
-				options.fields = fieldsDef;
+    const { users } = security;
 
-			// additionally apply fields by role
-			// and if user is in role
-			if (fieldsByRoleDef) {
-				// const rolesToMatch = Object.keys(fieldsByRoleDef);
-				// TODO check roles and assign fields if matched
-			}
+    if (typeof users !== 'undefined' && users.length === 0) {
+      throw new Error(this.errors.insufficientMembersDef);
+    }
 
-			// apply sort
-			if (sort && Object.keys(sort).length > 0)
-				options.sort = sort;
+    return function (clientQuery, clientProjection) {
+      check(clientQuery, clientSchema);
+      check(clientProjection, projectionSchema);
 
+      // perform basic security checks
+      // unless prevented by flag
+      if (!noUserChecks) {
+        PublicationFactory.checkUser(this.userId);
+        if (roles) {
+          PublicationFactory.checkRoles(this.userId, roles, group);
+        }
+        if (users) {
+          PublicationFactory.checkIsMember(this.userId, users);
+        }
+      }
 
-			if (logger) {
-				logger.call(logger, "Publication " + defObj.name + ": ask for " + [limit] + " documents:", this.userId, selector, options);
-			}
+      const finalQuery = queryTransform.call(this, clientQuery, Object.assign({}, queryServer));
+      const finalProjection = projectionTransform.call(this, clientProjection, Object.assign({}, projectionServer));
 
-			// query the data
-			const data = collection.find(selector, options);
+      if (!finalQuery || !finalProjection) {
+        throw new Meteor.Error(PublicationFactory.errors.missingTransformValue);
+      }
 
-			// return if something has been found
-			if (data && data.count() >= 0) {
-				if (logger)
-					logger.call(logger, "Publication " + defObj.name + ": return documents - " + data.count() + "docs to " + this.userId);
-				return data;
-			}
+      const data = Collection.find(finalQuery, finalProjection);
 
-			if (logger)
-				logger.call(logger, "Publication " + defObj.name + ": no data found");
+      // return if something has been found
+      if (data && data.count() >= 0) {
+        return data;
+      }
 
-			// else signal the subscription
-			// that we are ready
-			this.ready();
-		}
-	}
-}
+      // else signal the subscription
+      // that we are ready
+      this.ready();
+    };
+  },
+};

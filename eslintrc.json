@@ -1,0 +1,57 @@
+{
+	"extends": "@meteorjs/eslint-config-meteor",
+	"env": {
+		"es6": true,
+		"node": true,
+		"meteor": true,
+		"mocha": true
+	},
+	"globals": {
+		"Roles": true
+	},
+	"rules": {
+		"import/no-unresolved": "off",
+		"consistent-return": "off",
+		"semi": "error",
+		"no-mixed-spaces-and-tabs": "error",
+		"no-unused-vars": "error",
+		"prefer-destructuring": "error",
+		"object-curly-spacing": "error",
+		"max-len": [
+			"error",
+			{
+				"code": 120,
+				"ignoreStrings": true,
+				"ignoreUrls": true,
+				"ignoreTemplateLiterals": true,
+				"ignoreRegExpLiterals": true
+			}
+		],
+		"no-param-reassign": "error",
+		"no-restricted-syntax": [
+			"error",
+			"ForInStatement",
+			"LabeledStatement",
+			"WithStatement"
+		],
+		"no-console": [
+			"error",
+			{
+				"allow": [
+					"warn",
+					"error"
+				]
+			}
+		],
+		"indent": [
+			"error",
+			2
+		],
+		"no-underscore-dangle": "off",
+		"import/first": "off",
+		"meteor/no-session": "off",
+		"import/prefer-default-export": "off",
+		"no-plusplus": "off",
+		"no-tabs": "off"
+	}
+}
