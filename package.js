@@ -1,6 +1,6 @@
 Package.describe({
   name: 'jkuester:publication-factory',
-  version: '1.0.0',
+  version: '1.0.1',
   // Brief, one-line summary of the package.
   summary: 'Factory for dynamic publications with config, access checks and hooks.',
   // URL to the Git repository containing the source code for this package.
