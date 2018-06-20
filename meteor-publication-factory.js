@@ -55,7 +55,7 @@ export const PublicationFactory = {
   }),
 
   create({
-    collectionName, query, projection, security = {},
+    collectionName, query={}, projection={}, security = {},
   }) {
     check(collectionName, String);
     check(query, this._clientServerTransform);
