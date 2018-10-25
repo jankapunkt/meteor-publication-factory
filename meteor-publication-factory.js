@@ -93,12 +93,28 @@ export const PublicationFactory = {
       throw new Error(this.errors.insufficientMembersDef)
     }
 
-    return function ({ query = {}, projection = {} }) {
-      check(query, clientSchema || {})
-      check(projection, projectionSchema || {})
+    return function (options) {
+      check(options, Match.Where(opts => {
+        if (!opts) {
+          return false
+        }
+        if (!clientSchema && opts.query) {
+          return false
+        }
+        if (clientSchema && !Match.test(opts.query, clientSchema)) {
+          return false
+        }
+        if (!projectionSchema && opts.projection) {
+          return false
+        }
+        if (projectionSchema && !Match.test(opts.projection, projectionSchema)) {
+          return false
+        }
+        return true
+      }))
 
-      const clientQuery = query
-      const clientProjection = projection
+      const clientQuery = options.query || {}
+      const clientProjection = options.projection || {}
 
       // perform basic security checks
       // unless prevented by flag

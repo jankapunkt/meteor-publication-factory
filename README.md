@@ -15,6 +15,10 @@ meteor add jkuester:publication-factory
 
 ## Changelog
 
+1.1.1
+
+* fixed check to comply auditAllArguments and still accept undefined query / projection args from subscription
+
 1.1.0
 
 * lint fix using standardjs

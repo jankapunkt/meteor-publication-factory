@@ -248,7 +248,7 @@ if (Meteor.isServer) {
           input.query.schema = { createdBy: String }
           const pub = PublicationFactory.create(input).bind({ userId })
           pub({})
-        }, missingKey('createdBy'))
+        } /*, missingKey('createdBy') */)
       })
     })
 
