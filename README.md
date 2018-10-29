@@ -15,7 +15,11 @@ meteor add jkuester:publication-factory
 
 ## Changelog
 
-1.2.0
+1.2.1
+
+* fix custom validator interference with defualt validators
+
+1.2.0 (falsely named as 1.1.2)
 
 * Allow to pass custom validator functions vor `query` and `projection` with fallback to internal default validation.
 

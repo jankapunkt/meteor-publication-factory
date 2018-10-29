@@ -120,17 +120,15 @@ export const PublicationFactory = {
 
     return function (options) {
       check(options, Match.Where(opts => {
-        if (!opts) {
+        if (!opts && (clientSchema || projectionSchema)) {
           return false
         }
-        if (validators.query && !validators.query(opts.query, clientSchema)) {
-          return false
-        } else if (!DefaultValidators.query(opts.query, clientSchema)) {
+        const queryValidator = (validators.query || DefaultValidators.query)
+        if (!queryValidator(opts.query, clientSchema)) {
           return false
         }
-        if (validators.projection && !validators.projection(opts.projection, projectionSchema)) {
-          return false
-        } else if (!DefaultValidators.projection(opts.projection, projectionSchema)) {
+        const projectionValidator = (validators.projection || DefaultValidators.projection)
+        if (!projectionValidator(opts.projection, projectionSchema)) {
           return false
         }
         return true
