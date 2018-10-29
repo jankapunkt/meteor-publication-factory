@@ -5,6 +5,27 @@ import { check, Match } from 'meteor/check'
 
 const isObject = x => typeof x === 'object'
 
+export const DefaultValidators = {
+  query (query, querySchema) {
+    if (!querySchema && query) {
+      return false
+    }
+    if (querySchema && !Match.test(query, querySchema)) {
+      return false
+    }
+    return true
+  },
+  projection (projection, projectionSchema) {
+    if (!projectionSchema && projection) {
+      return false
+    }
+    if (projectionSchema && !Match.test(projection, projectionSchema)) {
+      return false
+    }
+    return true
+  }
+}
+
 export const PublicationFactory = {
 
   errors: {
@@ -14,7 +35,7 @@ export const PublicationFactory = {
     noCollection: 'publicationFactory.noCollection',
     insufficientRolesDef: 'publicationFactory.insufficientRolesDef',
     insufficientMembersDef: 'publicationFactory.insufficientMembersDef',
-    missingTransformValue: 'publicationFactory.missingTransformValue',
+    missingTransformValue: 'publicationFactory.missingTransformValue'
   },
 
   checkUser (userId) {
@@ -53,10 +74,10 @@ export const PublicationFactory = {
   _clientServerTransform: Match.Maybe({
     schema: Match.Maybe(Match.Where(isObject)),
     server: Match.Maybe(Match.Where(isObject)),
-    transform: Match.Maybe(Function),
+    transform: Match.Maybe(Function)
   }),
 
-  create ({ collectionName, query = {}, projection = {}, security = {} }) {
+  create ({ collectionName, query = {}, projection = {}, security = {}, validators = {} }) {
     check(collectionName, String)
     check(query, this._clientServerTransform)
     check(projection, this._clientServerTransform)
@@ -64,7 +85,11 @@ export const PublicationFactory = {
       roles: Match.Maybe(Match.OneOf(String, [ String ])),
       group: Match.Maybe(String),
       users: Match.Maybe([ String ]),
-      disable: Match.Maybe(Boolean),
+      disable: Match.Maybe(Boolean)
+    })
+    check(validators, {
+      query: Match.Maybe(Function),
+      projection: Match.Maybe(Function)
     })
 
     const Collection = Mongo.Collection.get(collectionName)
@@ -98,16 +123,14 @@ export const PublicationFactory = {
         if (!opts) {
           return false
         }
-        if (!clientSchema && opts.query) {
+        if (validators.query && !validators.query(opts.query, clientSchema)) {
+          return false
+        } else if (!DefaultValidators.query(opts.query, clientSchema)) {
           return false
         }
-        if (clientSchema && !Match.test(opts.query, clientSchema)) {
+        if (validators.projection && !validators.projection(opts.projection, projectionSchema)) {
           return false
-        }
-        if (!projectionSchema && opts.projection) {
-          return false
-        }
-        if (projectionSchema && !Match.test(opts.projection, projectionSchema)) {
+        } else if (!DefaultValidators.projection(opts.projection, projectionSchema)) {
           return false
         }
         return true
@@ -146,5 +169,5 @@ export const PublicationFactory = {
       // that we are ready
       this.ready()
     }
-  },
+  }
 }

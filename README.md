@@ -15,6 +15,10 @@ meteor add jkuester:publication-factory
 
 ## Changelog
 
+1.2.0
+
+* Allow to pass custom validator functions vor `query` and `projection` with fallback to internal default validation.
+
 1.1.1
 
 * fixed check to comply auditAllArguments and still accept undefined query / projection args from subscription
@@ -87,6 +91,27 @@ PublicationFactory.create({
   },
   security: {
     
+    // explicitly disable authentication check
+    // so the publication runs also for non-registered users
+    disable: Boolean,
+    
+    // define roles that registered users need to comply
+    // in order to publish. 
+    roles: [String],
+    
+    // define a group that registered users need to comply
+    // in order to publish.
+    group: String,
+  },
+  validators: {
+    
+     // custom validation for the 
+     // client side query
+    query: Function, 
+    
+    // custom validation for the 
+    // client side projection
+    projection: Function, 
   }
 })
 ```
@@ -197,7 +222,7 @@ subscribe to the publication and view data. Use with care!
 const Cars = new Mongo.Collection('cars');
 
 const prototypeCars = PublicationFactory.create({
-  collectionName: 'toys', // the collection to be published
+  collectionName: 'cars', // the collection to be published
   security: {
     roles: ['viewPrototypes'],
     group: 'researchers',
@@ -209,3 +234,52 @@ const prototypeCars = PublicationFactory.create({
 
 Meteor.publish("allToys", allToys);
 ```
+
+
+### params.validators
+
+With version 1.2.0 it is supported to pass in custom validators. 
+This solves the problem of providing a way for validating complex structures while keeping the package free of external dependencies.
+
+#### params.validators.query
+
+Runs a function that provides the current client query against the expected schema.
+Throw an error or return a falsey value in order to  
+
+##### Example using SimpleSchema
+
+Note, that SimpleSchema is optional to this package and needs to be installed, if you want to use it.
+
+```javascript
+const Cars = new Mongo.Collection('cars');
+
+const carsByYearSchemaDefinition = { 
+  year: Number,
+  min: 1769,
+  max: new Date().getFullYear() 
+}
+
+const carsByYearSchema = new SimplSchema(carsByYearSchemaDefinition)
+
+const carsByYear = PublicationFactory.create({
+  collectionName: 'cars', // the collection to be published
+  query: {
+    schema: carsByYearSchemaDefinition,
+  },
+  validators: {
+    query(clientQuery, querySchema) {
+      // throws error if not valid
+      carsByYearSchema.validate(clientQuery)
+      return true
+    }
+  }
+});
+
+
+Meteor.publish("carsByYear", carsByYear);
+```
+
+#### params.validators.projection
+
+The same principles apply to this function as for `params.validators.query`
+
