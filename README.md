@@ -1,7 +1,9 @@
 <center>
 <h1>jkuester:publication-factory - Meteor Publication Factory</h1>
 
+![GitHub](https://img.shields.io/github/license/jankapunkt/meteor-publication-factory.svg)
 [![Build Status](https://travis-ci.org/jankapunkt/meteor-publication-factory.svg?branch=master)](https://travis-ci.org/jankapunkt/meteor-publication-factory)
+![GitHub](https://img.shields.io/github/license/jankapunkt/meteor-publication-factory.svg)
 
 </center>
 
