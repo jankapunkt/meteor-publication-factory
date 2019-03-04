@@ -1,7 +1,7 @@
 <center>
 <h1>jkuester:publication-factory - Meteor Publication Factory</h1>
 
-![GitHub](https://img.shields.io/github/license/jankapunkt/meteor-publication-factory.svg)
+[![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 [![Build Status](https://travis-ci.org/jankapunkt/meteor-publication-factory.svg?branch=master)](https://travis-ci.org/jankapunkt/meteor-publication-factory)
 ![GitHub](https://img.shields.io/github/license/jankapunkt/meteor-publication-factory.svg)
 
