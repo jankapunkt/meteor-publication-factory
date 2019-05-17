@@ -17,6 +17,11 @@ meteor add jkuester:publication-factory
 
 ## Changelog
 
+1.2.2
+
+* add name of the publication to the details of any Meteor.Error message
+
+
 1.2.1
 
 * fix custom validator interference with defualt validators
