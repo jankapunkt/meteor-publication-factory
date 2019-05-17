@@ -38,9 +38,9 @@ export const PublicationFactory = {
     missingTransformValue: 'publicationFactory.missingTransformValue'
   },
 
-  checkUser (userId) {
+  checkUser (userId, publicationName) {
     if (!userId || !Meteor.users.findOne(userId)) {
-      throw new Meteor.Error(this.errors.userDenied)
+      throw new Meteor.Error(this.errors.userDenied, publicationName)
     }
     return true
   },
@@ -52,21 +52,21 @@ export const PublicationFactory = {
     return true
   },
 
-  checkRoles (userId, roleNames, roleDomain) {
+  checkRoles (userId, roleNames, roleDomain, publicationName) {
     const isInRoles = Roles.userIsInRole(userId, roleNames, roleDomain)
     if (!isInRoles) {
-      throw new Meteor.Error(this.errors.notInRole)
+      throw new Meteor.Error(this.errors.notInRole, publicationName)
     }
     return true
   },
 
-  checkIsMember (userId, userIds) {
+  checkIsMember (userId, userIds, publicationName) {
     if (!userId || !userIds) {
-      throw new Meteor.Error(this.errors.notMember)
+      throw new Meteor.Error(this.errors.notMember, publicationName)
     }
     const isMember = userIds.indexOf(userId) > -1
     if (!isMember) {
-      throw new Meteor.Error(this.errors.notMember)
+      throw new Meteor.Error(this.errors.notMember, publicationName)
     }
     return true
   },
@@ -134,18 +134,19 @@ export const PublicationFactory = {
         return true
       }))
 
+      const publicationName = this._name
       const clientQuery = options.query || {}
       const clientProjection = options.projection || {}
 
       // perform basic security checks
       // unless prevented by flag
       if (!noUserChecks) {
-        PublicationFactory.checkUser(this.userId)
+        PublicationFactory.checkUser(this.userId, publicationName)
         if (roles) {
-          PublicationFactory.checkRoles(this.userId, roles, group)
+          PublicationFactory.checkRoles(this.userId, roles, group, publicationName)
         }
         if (users) {
-          PublicationFactory.checkIsMember(this.userId, users)
+          PublicationFactory.checkIsMember(this.userId, users, publicationName)
         }
       }
 
@@ -153,7 +154,7 @@ export const PublicationFactory = {
       const finalProjection = projectionTransform.call(this, clientProjection, Object.assign({}, projectionServer))
 
       if (!finalQuery || !finalProjection) {
-        throw new Meteor.Error(PublicationFactory.errors.missingTransformValue)
+        throw new Meteor.Error(PublicationFactory.errors.missingTransformValue, publicationName)
       }
 
       const data = Collection.find(finalQuery, finalProjection)
