@@ -7,7 +7,23 @@
 
 </center>
 
-Supporter class to create publications from a source object with minimal to no extra code.
+Super flexible and lightweight factory for creating publications using custom validators.
+
+## Principle
+
+First and foremost you want your publications to be created from config objects (similar to `mdg:validated-method`).
+
+But of course, you want strong security for your publications  but also flexibility to choose, which technologies you
+use to enforce this security.
+
+Therefore, you write custom validators that apply for all publications, that are created using a factory instance.
+You basically abstract your validations away, so your publications will only need configuration.
+
+At the same time you want to focus your publication logic on the data layer, no checks, validations etc.
+Therefore, you add a `run` function to your config, that only cares about which data to query from which collection
+and how to transform if, finally returning a cursor.
+
+That's it - separation of concerns together with a flexible dependency injection.
 
 ## Installation
 
@@ -17,280 +33,147 @@ meteor add jkuester:publication-factory
 
 ## Changelog
 
-1.2.2
+2.0.0
 
-* add name of the publication to the details of any Meteor.Error message
+* Major change using generic validators
+* No binding to external packages
 
 
-1.2.1
+## Documentation
 
-* fix custom validator interference with defualt validators
+The factory is a configurable class, so you can create different factories using
+different configurations.
 
-1.2.0 (falsely named as 1.1.2)
+### Minimal example
 
-* Allow to pass custom validator functions vor `query` and `projection` with fallback to internal default validation.
-
-1.1.1
-
-* fixed check to comply auditAllArguments and still accept undefined query / projection args from subscription
-
-1.1.0
-
-* lint fix using standardjs
-* merged publication arguments from two to one on order to support single object args on subscriptions
-
-## Principle
-
-Pass in an object of your publication definitions with respect to the given API. 
-The factory will return a function that is ready to be passed to `Meteor.publish` and will behave according to your 
-configuration.
-
-## API
-
-The `create` functio requires at least an object, referred as `params` in this guide. 
-
-Note, that `params.collectionName` is currently the only required property to be passed.
-All other properties are optional! Such a publication would default to return all documents and accepts no args from subscriptions.
-
-### All Parameters
-
-The basic paramater pattern is
- 
-```javascript
-PublicationFactory.create(params)
-```
-
-which can be fully broken down to the following schema:
+You can for example leave the config empty to create a minimal factory: 
 
 ```javascript
-PublicationFactory.create({
-
-  // the collection to be published
-  collectionName: String,
-  
-  // define query behavior
-  query: {
-    
-    // describe the allowed query args 
-    // using a schema descriptiom
-    schema: Object,
-    
-    // describe the default query, the server
-    // will execute if no transform is applied
-    server: Object,
-    
-    // provide a function that conditionally applies client
-    // queries on server queries. You can also include strict
-    // or loose security checks here as a third layer of security
-    transform: Function
-  },
-  projection: {
-    
-    // describe the allowed projection args 
-    // using a schema descriptiom
-    schema: Object,
-    
-    // describe the default projection, the server
-    // will execute if no transform is applied
-    server: Object,
-    
-    // provide a function that conditionally applies client
-    // projection on server projection. You can also include strict
-    // or loose security checks here as a third layer of security
-    transform: Function
-        
-  },
-  security: {
-    
-    // explicitly disable authentication check
-    // so the publication runs also for non-registered users
-    disable: Boolean,
-    
-    // define roles that registered users need to comply
-    // in order to publish. 
-    roles: [String],
-    
-    // define a group that registered users need to comply
-    // in order to publish.
-    group: String,
-  },
-  validators: {
-    
-     // custom validation for the 
-     // client side query
-    query: Function, 
-    
-    // custom validation for the 
-    // client side projection
-    projection: Function, 
+const factory = new PublicationFactory()
+factory.create({
+  name: 'allMyDocuments',
+  run: function({ limit }) {
+    const createdBy = this.userId
+    return MyCollection.find({}, { createdBy, limit })
   }
 })
 ```
 
-### params.collectionName (String) 
+In this base configuration there is no validation at all. If you want to add custom validations, 
+you need to define custom validators and add them to the factory configuration.
 
-Pass the name of a collection for which you want to publish data. If no other parameters are passed, the whole 
-collection's data will be published.
+### Writing Validators
 
-#### Example
+A validator is a function that receives the create options and returns a validation function
+based on these options:
 
 ```javascript
-const Cars = new Mongo.Collection('cars')
-
-const allCars = PublicationFactory.create({
-  collectionName: 'cars', // the collection to be published
-})
-
-// publishing this will
-// return all cars, and 
-// accept no args from subscriptions
-Meteor.publish("allCars", allCars)
+({}) => (...*) => undefined|throw
 ```
 
-### params.query (Object)
+The validation function should throw an Error if validation fails, otherwise return undefined / no return.
 
-You can define query behavior including transforming queries based on data, passed by clients.
-
-#### params.query.server (Object)
-
-You can define a static query using the `server` property. This is useful when your publication always publishes data 
-by the same set of rules.
-
-Falls back to `{}` if nothing is passed.
-
-#### params.query.schema (Object)
-
-Restrict client's query options using schema definition that is conform to `check/Match`.
-Basic `SimpleSchema` definitions can be used, too, as they both follow the `property:Constructor` pattern. 
-
-Complex restrictions however, can also be set using `Match` pattern.
-
-#### params.query.transform (Function)
-
-You can use this to define dynamic queries that respects users input and the default query on the server. You can also
-perform additional checks here. 
-
-Pass a function that accepts two parameters (`queryClient` - the current client's query object that is passed to the pub, 
-`queryServer` - the default server query) and return your final query.
-
-#### Example
+The following example defines a validator for an arguments schema and
+for user logged-in status:
 
 ```javascript
-const Cars = new Mongo.Collection('cars');
-
-const redCarsByYear = PublicationFactory.create({
-  collectionName: 'cars', // the collection to be published
-  query: {
-    schema: { year: Number },
-    server: { color: 'red' },
-    transform(queryClient, queryServer) {
-      return Object.assign({}, { year: { $gt: queryClient.year }, queryServer})
-    }
+const validateArgs = function({ schema }) {
+  if (!schema) throw new Error('expected schema') // makes the field required
+  const schema = new SimpleSchema(schema)
+  return function validate (...args) {
+    schema.validate(...args)
   }
-})
-
-// this would create a publication that
-// returns all car docs with color=red by a
-// given year
-Meteor.publish("redCarsByYear", redCarsByYear)
-```
-
-### params.projection (Object)
-
-Works the same way as `params.query` but for the projection values. Use `transform` to add custom logic for handling 
-`skip`, `limit` etc.
-
-### params.security (Object)
-
-The create method's parameter object accepts several security settings using the `security` property. 
-By default each publication is checking `this.userId` against `Meteor.users` and throws an error if failing.
-
-#### params.security.roles (String or [String])
-
-Add roles (uses `alanning:roles`) and optional group definition to `security` to also check against roles. If no 
-`roles` property is given, no roles check will be performed.
-
-#### params.security.group (String)
-
-Optional group definition as defined by `alanning:roles`. 
-
-#### params.security.users ([String])
-
-* You can add an array of user ids, named `users` to `security` in order to restrict for specific users.
-This array can also be used in combination with `roles` where `roles` is first checked and then `users`. 
-If a user passes the roles check but is not in the given pool of users, the check will fail. If no `users` property 
-is given, no check will be performed.  
-
-#### params.security.disable (Boolean)
-
-* Add `disable:true` to  `security` in order to surpass all prior mentioned security checks. In this case anyone can 
-subscribe to the publication and view data. Use with care!
-
-#### Example
-
-
-```javascript
-const Cars = new Mongo.Collection('cars');
-
-const prototypeCars = PublicationFactory.create({
-  collectionName: 'cars', // the collection to be published
-  security: {
-    roles: ['viewPrototypes'],
-    group: 'researchers',
-    members: ['someUserIdHere'],
-    disable: false,
-  }
-});
-
-
-Meteor.publish("allToys", allToys);
-```
-
-
-### params.validators
-
-With version 1.2.0 it is supported to pass in custom validators. 
-This solves the problem of providing a way for validating complex structures while keeping the package free of external dependencies.
-
-#### params.validators.query
-
-Runs a function that provides the current client query against the expected schema.
-Throw an error or return a falsey value in order to  
-
-##### Example using SimpleSchema
-
-Note, that SimpleSchema is optional to this package and needs to be installed, if you want to use it.
-
-```javascript
-const Cars = new Mongo.Collection('cars');
-
-const carsByYearSchemaDefinition = { 
-  year: Number,
-  min: 1769,
-  max: new Date().getFullYear() 
 }
 
-const carsByYearSchema = new SimplSchema(carsByYearSchemaDefinition)
-
-const carsByYear = PublicationFactory.create({
-  collectionName: 'cars', // the collection to be published
-  query: {
-    schema: carsByYearSchemaDefinition,
-  },
-  validators: {
-    query(clientQuery, querySchema) {
-      // throws error if not valid
-      carsByYearSchema.validate(clientQuery)
-      return true
+const validateUser = function({ name, isPublic }) {
+  if (isPublic) return
+  return function validate () {
+    // this-context will be bound to the publication function
+    // so we can access the user as in any normal publication
+    const { userId } = this
+    if (!userId || !Meteor.users.findOne(userId)) {
+      throw new Meteor.Error(403, 'publication.permissionDenied', name)
     }
   }
-});
+}
 
-
-Meteor.publish("carsByYear", carsByYear);
+const validators = [ validateArgs, validateUser ]
+const factory = new PublicationFactory({ validators })
+factory.create({
+  name: 'allMyDocuments',
+  isPublic: false,
+  schema: { limit: Number },
+  run: function({ limit }) {
+    const createdBy = this.userId
+    return MyCollection.find({}, { createdBy, limit })
+  }
+})
 ```
 
-#### params.validators.projection
+### Full Example
 
-The same principles apply to this function as for `params.validators.query`
+The following example creates a new publication and uses a custom validation for a user to have certain roles.
+This involves a third party package (`alanning:roles`) and you are not bound to use this specific package, 
+since the validators are up to you.
 
+First we create the validators:
+
+```javascript
+const validateArgs = function() {
+  return function validate (...args) {
+    if (args.length > 0) throw new Error('expected no args')
+  }
+}
+
+const validateRoles = function({ roles, group }) {
+  if (!roles) return
+  
+ return function validate () {
+   const { userId } = this
+   if (!userId || !Roles.userIsInRoles(userId)) {
+     throw new Meteor.Error(403, 'publication.permissionDenied', name)
+   }
+ }
+}
+```
+
+Second, we create the factory while injecting the validators:
+
+```javascript
+const validators = [validateRoles]
+const factory = new PublicationFactory({ validators })
+```
+
+Third, we create a specific publication using the factory:
+
+```javascript
+const Cars = new Mongo.Collection('cars');
+const prototypeCars = factory.create({
+  name: 'prototypeCars',
+  roles: ['camViewPrototypes'],
+  group: 'researchers',
+  run: function() {
+    return Cars.find({ isPrototype: true })
+  }
+})
+
+// note that we could automatically publish using
+// the `publish` flag in the config for factory.create
+Meteor.publish('prototypeCars', prototypeCars)
+```
+
+## Testing
+
+You can run the tests using the [test script](./tests.sh) or using the following bash line:
+
+```bash
+$ METEOR_PACKAGE_DIRS=../ TEST_WATCH=1 meteor test-packages ./ --driver-package meteortesting:mocha
+```
+
+## Contribution
+
+Every contribution is very welcome. Feel free to raise an issue, if there is any problem with this package.
+
+## License
+
+MIT, see [license file](./LICENSE)
