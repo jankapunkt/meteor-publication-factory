@@ -1,3 +1,6 @@
+<h1>!!!Attention!!! - This package has been superseeded by the following: https://github.com/leaonline/publication-factory</h1>
+<p>Please use the package in the link as your new flexible and maintainable publication factory.</p>
+
 <center>
 <h1>jkuester:publication-factory - Meteor Publication Factory</h1>
 
